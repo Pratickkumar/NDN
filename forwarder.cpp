@@ -377,11 +377,17 @@ Forwarder::onIncomingData(const Data& data, const FaceEndpoint& ingress)
   const char localhost_prefix []= "/localhost/";
   std::string str= data.getName().toUri() ;
   
+  std::string nodeName = "";
+  uint32_t nodeId = -1;
   
-   if (str.compare (0, strlen (localhost_prefix), localhost_prefix )!=0) {
+  
+if (str.compare (0, strlen (localhost_prefix), localhost_prefix )!=0) {
         
         total_data ++;
         ns3::Ptr<ns3::Node> node= ns3::NodeList::GetNode (ns3::Simulator::GetContext());
+        nodeId = node->GetId();
+        nodeName = ns3::Names::FindName(node);
+        std::cout << "Node ID: " << nodeId << ", Name: " << nodeName << std::endl;
        
    }
    
@@ -414,27 +420,26 @@ Forwarder::onIncomingData(const Data& data, const FaceEndpoint& ingress)
   auto& pitEntry = pitMatches.front();
 
   NFD_LOG_DEBUG("onIncomingData matching=" << pitEntry->getName());
-  // ---- Problematic Part - Need to be seen -------------
-  
-    
-      ndn::Name name = data.getName();
-      std::string producerId = name.at(1).toUri();  // "p1"
-      std::cout << ">> Incoming Data from: " << producerId << " | Full Name: " << data.getName().toUri()<<"\n";
+  // ---- Problematic Part - Need to be seen ------------
+
 
       // Only calculate delay if it's NOT a producer (p1, p2, p3, p4)
       
-      if (producerId!="p1" && producerId!="p2" && producerId!="p3" && producerId!="p4") {
-          pit::InRecordCollection::iterator lastExpiring = std::max_element(
-          pitEntry->in_begin(), pitEntry->in_end(), &compare_InRecord_expiry);
-          time::steady_clock::TimePoint lastRenewed = lastExpiring->getLastRenewed();
-          time::nanoseconds diff = (time::steady_clock::now() - lastRenewed);
-          time::milliseconds diff2 = time::duration_cast<time::milliseconds>(diff);
-          // std::cout << "\nDiff2 in case of time: " << diff2 << "\n";
-          restime += diff2.count();
-          rescount++;
-          std::cout<<" Name: "<<producerId<<"\n";
-          std::cout << "Delay: " << (restime / rescount) << "\n";
+      if (nodeName != "p1" && nodeName != "p2" && nodeName != "p3" && nodeName != "p4"){
+      pit::InRecordCollection::iterator lastExpiring = std::max_element(
+      pitEntry->in_begin(), pitEntry->in_end(), &compare_InRecord_expiry);
+      time::steady_clock::TimePoint lastRenewed = lastExpiring->getLastRenewed();
+      time::nanoseconds diff = (time::steady_clock::now() - lastRenewed);
+      time::milliseconds diff2 = time::duration_cast<time::milliseconds>(diff);
+    
+      restime += diff2.count();
+      rescount++;
+      std::cout << "Delay: " << (restime / rescount) << "\n";
+      }else{
+            restime += 0;
+            //rescount++;
       }
+
       // ------- Till this part -
 
   std::set<std::pair<Face*, EndpointId>> satisfiedDownstreams;
